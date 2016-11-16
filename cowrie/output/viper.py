@@ -58,6 +58,7 @@ class Output(cowrie.core.output.Output):
     """
     def __init__(self, cfg):
         self.viperUrl = cfg.get('output_viper', 'viper_url')
+        log.msg("Viper URL: {}".format(self.viperUrl))
         cowrie.core.output.Output.__init__(self, cfg)
 
 
@@ -92,7 +93,7 @@ class Output(cowrie.core.output.Output):
         elif entry['eventid'] == 'cowrie.session.file_upload':
             log.msg('Sending file_upload to Viper')
             self.postfile(entry["outfile"], entry["filename"])
-            
+
     def postfile(self, artifact, fileName):
         """
         Send file to Viper
