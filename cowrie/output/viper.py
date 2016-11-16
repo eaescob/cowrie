@@ -99,6 +99,7 @@ class Output(cowrie.core.output.Output):
         Send file to Viper
         """
 
+        log.msg('Artifact {} fileName {}'.format(artifact, fileName));
         contextFactor = WebClientContextFactory()
         fields = {('tags', 'cowrie')}
         files = {('file', fileName, open(artifact, 'rb'))}
@@ -134,6 +135,8 @@ class Output(cowrie.core.output.Output):
                 log.msg("Viper Request failed: {} {}".format(response.code, response.phrase))
                 return
 
+        def cbShutdown(ignored):
+            reactor.stop()
 
         def cbError(failure):
             failure.printTraceback()
@@ -147,6 +150,7 @@ class Output(cowrie.core.output.Output):
 
         d.addCallback(cbResponse)
         d.addErrback(cbError)
+        reactor.run()
         return d
 
 class WebClientContextFactory(ClientContextFactory):
