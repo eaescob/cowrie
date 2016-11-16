@@ -77,9 +77,22 @@ class Output(cowrie.core.output.Output):
     def write(self, entry):
         """
         """
-        if entry['entryid'] == 'cowrie.session.file_download':
+        if entry['eventid'] == 'cowrie.session.file_download':
             log.msg('Sending file to Viper')
-
+            p = urlparse(entry["url"]).path
+            if p == "":
+                fileName = entry["shasum"]
+            else:
+                b = os.path.basename(p)
+                if b == "":
+                    fileName = entry["shasum"]
+                else:
+                    fileName = b
+            self.postfile(entry["outfile"], fileName)
+        elif entry['eventid'] == 'cowrie.session.file_upload':
+            log.msg('Sending file_upload to Viper')
+            self.postfile(entry["outfile"], entry["filename"])
+            
     def postfile(self, artifact, fileName):
         """
         Send file to Viper
