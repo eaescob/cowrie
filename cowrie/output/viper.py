@@ -38,6 +38,7 @@ import json
 import os
 import string
 import random
+import requests
 
 try:
     from urllib.parse import urlparse, urlencode
@@ -58,7 +59,6 @@ class Output(cowrie.core.output.Output):
     """
     def __init__(self, cfg):
         self.viperUrl = cfg.get('output_viper', 'viper_url')
-        log.msg("Viper URL: {}".format(self.viperUrl))
         cowrie.core.output.Output.__init__(self, cfg)
 
 
@@ -96,11 +96,24 @@ class Output(cowrie.core.output.Output):
 
     def postfile(self, artifact, fileName):
         """
+        Send a file to Viper using requests
+        """
+        files = {'file': ( fileName, open(artifact, 'rb'))}
+        fields = {'tags': 'cowrie'}
+
+        r = requests.post(self.viperUrl, files=files, data=fields)
+
+        if r.response_code == 200:
+            log.msg('Received success from Viper: {}'.format(r.text))
+        else:
+            log.msg('Received error from Vier {} {}'.format(r.response_code, r.text))
+            
+    def postfile2(self, artifact, fileName):
+        """
         Send file to Viper
         """
 
-        log.msg('Artifact {} fileName {}'.format(artifact, fileName));
-        contextFactor = WebClientContextFactory()
+        contextFactory = WebClientContextFactory()
         fields = {('tags', 'cowrie')}
         files = {('file', fileName, open(artifact, 'rb'))}
         contentType, body = encode_multipart_formdata(fields, files)
@@ -113,6 +126,7 @@ class Output(cowrie.core.output.Output):
 
         agent = client.Agent(reactor, contextFactory)
         d = agent.request('POST', self.viperUrl, headers, producer)
+        log.msg('Sent request {}'.format(d))
 
         def cbBody(body):
             return processResult(body)
@@ -127,6 +141,7 @@ class Output(cowrie.core.output.Output):
 
         def cbResponse(response):
             if response.code == 200:
+                log.msg('Response {} received from Viper'.format(response.code))
                 d = client.readBody(response)
                 d.addCallback(cbBody)
                 d.addErrback(cbPartial)
@@ -134,9 +149,6 @@ class Output(cowrie.core.output.Output):
             else:
                 log.msg("Viper Request failed: {} {}".format(response.code, response.phrase))
                 return
-
-        def cbShutdown(ignored):
-            reactor.stop()
 
         def cbError(failure):
             failure.printTraceback()
@@ -150,7 +162,6 @@ class Output(cowrie.core.output.Output):
 
         d.addCallback(cbResponse)
         d.addErrback(cbError)
-        reactor.run()
         return d
 
 class WebClientContextFactory(ClientContextFactory):
@@ -182,8 +193,6 @@ class StringProducer(object):
     def stopProducing(self):
         pass
 
-def id_generator(size=14, chars=string.ascii_lowercase + string.digits):
-    return ''.join(random.choice(chars) for _ in range(size))
 
 def encode_multipart_formdata(fields, files):
     """
